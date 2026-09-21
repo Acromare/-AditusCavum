@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.heng</groupId>
     <artifactId>AditusCavum</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <name>AditusCavum</name>
     <description>AditusCavum</description>
     <url/>
@@ -59,6 +59,17 @@
 
     <build>
         <plugins>
+            <!--
+                JitPack's default Maven runtime can be older than the version
+                required by the resources plugin selected by recent Spring
+                Boot parent POMs. Keep this plugin explicit so the library
+                can be built from JitPack as well as from modern Maven.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
