@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.heng</groupId>
     <artifactId>AditusCavum</artifactId>
-    <version>0.1.5</version>
+    <version>0.1.6</version>
     <name>AditusCavum</name>
     <description>AditusCavum</description>
     <url/>
@@ -87,6 +87,11 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>3.1.2</version>
             </plugin>
         </plugins>
     </build>
