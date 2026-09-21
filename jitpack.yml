@@ -2,4 +2,4 @@ jdk:
   - openjdk17
 
 install:
-  - mvn install -DskipTests -Dmaven.javadoc.skip=true
+  - mvn install -Dmaven.test.skip=true -Dmaven.javadoc.skip=true

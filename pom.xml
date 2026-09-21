@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.heng</groupId>
     <artifactId>AditusCavum</artifactId>
-    <version>0.1.3</version>
+    <version>0.1.4</version>
     <name>AditusCavum</name>
     <description>AditusCavum</description>
     <url/>
@@ -77,6 +77,11 @@
                 <configuration>
                     <parameters>true</parameters>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
             </plugin>
         </plugins>
     </build>

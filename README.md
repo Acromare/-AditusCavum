@@ -73,11 +73,11 @@ The current release is available through JitPack:
 <dependency>
     <groupId>com.github.Acromare</groupId>
     <artifactId>-AditusCavum</artifactId>
-    <version>v0.1.3</version>
+    <version>v0.1.4</version>
 </dependency>
 ```
 
-JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.1.3>
+JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.1.4>
 
 ### 2. Configure a model
 
