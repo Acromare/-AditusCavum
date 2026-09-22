@@ -48,6 +48,7 @@ The name comes from the Latin-inspired phrase “Aditus Cavum”: an entrance an
 - In-memory conversation memory keyed by conversation ID
 - Configurable system prompt
 - Spring Boot auto-configuration
+- Optional `AditusService` base class with inherited chat, streaming, and conversation cleanup
 - Incremental SSE text streaming through `Flux<String>`, including tool-call continuation
 
 ## Current Scope
@@ -73,11 +74,11 @@ The current release is available through JitPack:
 <dependency>
     <groupId>com.github.Acromare</groupId>
     <artifactId>-AditusCavum</artifactId>
-    <version>v0.1.9</version>
+    <version>v0.2.0</version>
 </dependency>
 ```
 
-JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.1.9>
+JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.2.0>
 
 ### 2. Configure a model
 
@@ -155,6 +156,35 @@ public class OrderTools {
 `@MarkTheRuins` controls which types are scanned. Only marked types are registered as tools. The `@Need` value becomes the description sent to the model, so describe the action, object, and important conditions clearly.
 
 ### 4. Call the assistant
+
+For an application-owned service, extend `AditusService`. Spring injects the assistant into the base class; the subclass needs no fields, constructor, Lombok annotation, or forwarding methods:
+
+```java
+import com.heng.aditus.AditusService;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AIService extends AditusService {
+}
+```
+
+Inject `AIService` into your controller and call `chat(message)`, `chat(conversationId, message)`, `stream(message)`, `stream(conversationId, message)`, or `clearConversation(conversationId)` directly. Register the subclass as a Spring bean; do not instantiate it with `new`.
+
+Override only the behavior your application needs. For example, add a business validation rule and retain framework behavior through `super`:
+
+```java
+@Override
+public String chat(String conversationId, String message) {
+    if (message == null || message.isBlank()) {
+        return "Please enter a question.";
+    }
+    return super.chat(conversationId, message);
+}
+```
+
+The one-argument methods delegate to the corresponding two-argument method with a null conversation ID, so a two-argument override also applies to stateless calls. Chat and streaming are separate operations: override both when a rule must apply to both. Streaming customization should preserve lazy execution using Reactor operators or `Flux.defer`.
+
+This base class is optional. Direct assistant injection remains supported, including when your service already extends another class:
 
 ```java
 import com.heng.aditus.AditusAssistant;
@@ -298,7 +328,7 @@ Windows:
 ./mvnw.cmd test
 ```
 
-The current tests cover tool schema generation, Java Bean argument invocation, in-memory conversation memory, Spring context startup, consumer YAML binding, incremental SSE delivery, fragmented tool calls, cancellation, errors, tool limits, and streaming conversation isolation. Streaming tests use a local HTTP server and require no provider API key.
+The current tests cover tool schema generation, Java Bean argument invocation, in-memory conversation memory, Spring context startup, consumer YAML binding, incremental SSE delivery, fragmented tool calls, cancellation, errors, tool limits, streaming conversation isolation, inherited service injection, and method overrides. Streaming tests use a local HTTP server and require no provider API key.
 
 ## Roadmap
 
