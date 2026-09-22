@@ -16,6 +16,11 @@ import com.heng.aditus.memory.InMemoryChatMemory;
 @EnableConfigurationProperties(AditusProperties.class)
 public class AditusConfiguration {
     @Bean
+    static AditusClientScanner aditusClientScanner() {
+        return new AditusClientScanner();
+    }
+
+    @Bean
     @ConditionalOnMissingBean
     public ObjectMapper aditusObjectMapper() {
         return new ObjectMapper();

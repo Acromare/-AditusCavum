@@ -7,7 +7,7 @@ import reactor.core.publisher.Flux;
  * Optional base for application-owned Spring services.
  * Register the subclass with {@code @Service}; override only the operations you customize.
  */
-public abstract class AditusService {
+public abstract class AditusService implements AditusOperations {
     @Autowired
     private AditusAssistant assistant;
 

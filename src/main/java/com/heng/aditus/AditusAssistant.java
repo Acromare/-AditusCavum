@@ -6,7 +6,7 @@ import com.heng.aditus.memory.ChatMemory;
 import com.heng.aditus.model.ChatMessage;
 import reactor.core.publisher.Flux;
 
-public class AditusAssistant {
+public class AditusAssistant implements AditusOperations {
     private final ChatModel model;
     private final ChatMemory memory;
     private final AditusProperties properties;

@@ -2,9 +2,44 @@
 
 > Connect natural language to real Java capabilities with only a few lines of code.
 
-AditusCavum is a lightweight Java model-calling and Tool Calling framework for Spring Boot. It follows the proven ideas behind LangChain4j while keeping model requests, tool schemas, argument conversion, tool loops, and conversation messages inside the framework.
+AditusCavum is a lightweight Java chat, streaming, and Tool Calling framework for Spring Boot. Declare a client interface, inject it, and call the predefined methods. The framework handles model requests, tool schemas, argument conversion, tool loops, and conversation memory.
 
-Define a tool:
+Declare your AI client:
+
+```java
+import com.heng.aditus.AditusOperations;
+import com.heng.aditus.annotation.AditusClient;
+
+@AditusClient
+public interface ExamAI extends AditusOperations {
+}
+```
+
+Inject it into your application:
+
+```java
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
+
+@Service
+public class ExamSupport {
+    private final ExamAI examAI;
+
+    public ExamSupport(ExamAI examAI) {
+        this.examAI = examAI;
+    }
+
+    public Flux<String> answer(String conversationId, String question) {
+        return examAI.stream(conversationId, question);
+    }
+}
+```
+
+The client implementation is created automatically: no implementation class or `super` call is required. Place the interface under your Spring Boot application package and configure your model using the Quick Start below. `chat(...)` returns a complete answer; `stream(...)` emits text incrementally. The surrounding service above is optional: a controller can inject `ExamAI` directly.
+
+**New in v0.2.1:** `@AditusClient`, the shared `AditusOperations` contract, automatic interface scanning, and JDK proxy registration. Existing `extends AditusService` and direct `AditusAssistant` injection remain supported. See the [release notes](docs/releases/v0.2.1.md) for added and changed behavior, and the [client guide](docs/clients.md) for full examples and limitations.
+
+Optionally define a model-callable tool:
 
 ```java
 @MarkTheRuins
@@ -18,10 +53,10 @@ public class WeatherTools {
 }
 ```
 
-Then call the assistant:
+Then call your injected client:
 
 ```java
-String answer = assistant.chat("What is the weather like in Shanghai today?");
+String answer = examAI.chat("What is the weather like in Shanghai today?");
 ```
 
 The model decides whether to call `queryWeather` from the `@Need` description. AditusCavum converts the model arguments into Java values, invokes the method, sends the result back to the model, and returns the final answer.
@@ -49,6 +84,7 @@ The name comes from the Latin-inspired phrase “Aditus Cavum”: an entrance an
 - Configurable system prompt
 - Spring Boot auto-configuration
 - Optional `AditusService` base class with inherited chat, streaming, and conversation cleanup
+- Injectable `@AditusClient` interfaces backed by automatic proxies
 - Incremental SSE text streaming through `Flux<String>`, including tool-call continuation
 
 ## Current Scope
@@ -74,11 +110,11 @@ The current release is available through JitPack:
 <dependency>
     <groupId>com.github.Acromare</groupId>
     <artifactId>-AditusCavum</artifactId>
-    <version>v0.2.0</version>
+    <version>v0.2.1</version>
 </dependency>
 ```
 
-JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.2.0>
+JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.2.1>
 
 ### 2. Configure a model
 
@@ -156,6 +192,19 @@ public class OrderTools {
 `@MarkTheRuins` controls which types are scanned. Only marked types are registered as tools. The `@Need` value becomes the description sent to the model, so describe the action, object, and important conditions clearly.
 
 ### 4. Call the assistant
+
+Declare an interface when you only need the predefined operations:
+
+```java
+import com.heng.aditus.AditusOperations;
+import com.heng.aditus.annotation.AditusClient;
+
+@AditusClient
+public interface ExamAI extends AditusOperations {
+}
+```
+
+Put it under your Spring Boot application package, then inject `ExamAI` and call `chat`, `stream`, or `clearConversation`. The framework creates its implementation; no `@Service`, implementation class, or `super` call is needed. Method signatures are predefined, while argument values come from each invocation. Unknown abstract methods are rejected at startup; explicitly implemented Java `default` methods are supported. See the [interface-client guide](docs/clients.md) for a complete controller example, scan configuration, implementation details, and limitations.
 
 For an application-owned service, extend `AditusService`. Spring injects the assistant into the base class; the subclass needs no fields, constructor, Lombok annotation, or forwarding methods:
 
@@ -299,10 +348,11 @@ The framework never executes arbitrary SQL and never gives the model direct acce
 
 ### Keep the user-facing API small
 
-The user-facing API is intentionally built around two annotations:
+The public annotations have separate responsibilities:
 
 - `@MarkTheRuins`: mark the entry points that the framework may discover
 - `@Need`: describe a capability that the model may call
+- `@AditusClient`: register an injectable interface for calling the assistant; this does not register a model-callable tool
 
 Model clients, message loops, schemas, memory, and error handling stay inside the framework whenever possible.
 
