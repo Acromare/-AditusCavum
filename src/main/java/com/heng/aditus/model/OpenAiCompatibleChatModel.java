@@ -19,18 +19,36 @@ import java.time.Duration;
 import java.util.List;
 import java.util.TreeMap;
 
+/**
+ * Calls an OpenAI-compatible Chat Completions endpoint with blocking or incremental SSE responses.
+ * <p>Tool descriptions come from {@link ToolRegistry}. When the model requests tools, this adapter
+ * executes them, appends their results to the request context, and asks the model to continue.
+ * Tool rounds are bounded by configuration. Requests are not automatically retried, and cancellation
+ * does not roll back tools that have already executed.
+ */
 public class OpenAiCompatibleChatModel implements ChatModel {
     private final ObjectMapper mapper;
     private final ToolRegistry registry;
     private final AditusProperties properties;
     private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
 
+    /**
+     * Creates an adapter with a 20-second HTTP connection timeout.
+     * @param mapper the JSON mapper for provider messages and tool results
+     * @param registry the available business tools
+     * @param properties provider credentials, endpoint, model name, and tool limits
+     */
     public OpenAiCompatibleChatModel(ObjectMapper mapper, ToolRegistry registry, AditusProperties properties) {
         this.mapper = mapper;
         this.registry = registry;
         this.properties = properties;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Executes requested tools between model requests until a text reply is available.
+     * The round limit is checked before executing tools in each round.
+     */
     @Override
     public String chat(List<ChatMessage> inputMessages) {
         ArrayNode messages = messages(inputMessages);
@@ -51,6 +69,12 @@ public class OpenAiCompatibleChatModel implements ChatModel {
         return stream(List.of(ChatMessage.user(message)));
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>Each subscription starts a fresh SSE request on boundedElastic. Text fragments are emitted
+     * as they arrive; tool argument fragments remain internal until complete. Abnormal termination
+     * produces an error, potentially after partial text has been delivered.
+     */
     @Override
     public Flux<String> stream(List<ChatMessage> inputMessages) {
         return Flux.defer(() -> streamRound(messages(inputMessages), 0));
@@ -64,6 +88,15 @@ public class OpenAiCompatibleChatModel implements ChatModel {
         return messages;
     }
 
+    /**
+     * Reads one SSE response, assembling interleaved tool fragments by their call index.
+     * <p>Requires both a completion marker and a valid finish reason before accepting a response.
+     * Before tool execution, validates call IDs, registered names, and JSON object arguments.
+     * These structural checks do not validate business rules. Tool results start the next round.
+     * @param messages mutable request context, including previous tool results
+     * @param round number of tool rounds already executed
+     * @return text fragments from this response and any subsequent tool rounds
+     */
     private Flux<String> streamRound(ArrayNode messages, int round) {
         return Flux.defer(() -> {
             var calls = new TreeMap<Integer, ObjectNode>();
@@ -167,6 +200,7 @@ public class OpenAiCompatibleChatModel implements ChatModel {
         }
     }
 
+    /** Invokes a registered business tool and appends its serialized result with the matching call ID. */
     private void executeTool(ArrayNode messages, JsonNode call) {
         String name = call.path("function").path("name").asText();
         AditusTool tool = registry.get(name);
@@ -183,6 +217,7 @@ public class OpenAiCompatibleChatModel implements ChatModel {
         }
     }
 
+    /** Builds a Chat Completions request, rejecting missing credentials before any network call. */
     private HttpRequest buildRequest(ArrayNode messages, boolean stream) {
         if (properties.getModel().getApiKey() == null || properties.getModel().getApiKey().isBlank()) {
             throw new IllegalStateException("Set aditus-cavum.model.api-key before calling the model");
@@ -205,6 +240,7 @@ public class OpenAiCompatibleChatModel implements ChatModel {
                 .build();
     }
 
+    /** Sends a blocking request, rejects non-success HTTP status codes, and preserves thread interruption. */
     private JsonNode request(ArrayNode messages, boolean stream) {
         try {
             HttpResponse<String> response = client.send(buildRequest(messages, stream), HttpResponse.BodyHandlers.ofString());

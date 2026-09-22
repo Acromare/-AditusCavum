@@ -14,9 +14,22 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Collects tool methods from Spring beans for lookup by the model adapter.
+ * <p>Inspects implementation classes and directly implemented interfaces marked with
+ * {@link MarkTheRuins}, registering their declared methods annotated with {@link Need}.
+ * Tool names must be globally unique within this registry. Compile business code with
+ * {@code -parameters} to expose meaningful parameter names to the model.
+ */
 public class ToolRegistry {
     private final Map<String, AditusTool> tools = new LinkedHashMap<>();
 
+    /**
+     * Discovers and wraps tools; discovery may initialize application beans.
+     * @param context the Spring context containing business beans
+     * @param mapper the JSON mapper supplied to tool wrappers
+     * @throws IllegalStateException if tool names are duplicated
+     */
     public ToolRegistry(ApplicationContext context, ObjectMapper mapper) {
         for (Object bean : context.getBeansOfType(Object.class).values()) {
             Class<?> type = AopUtils.getTargetClass(bean);
@@ -39,6 +52,15 @@ public class ToolRegistry {
         }
     }
 
+    /**
+     * Returns the tools used to build model request descriptions.
+     * @return a registry collection view that callers should not modify
+     */
     public Collection<AditusTool> all() { return tools.values(); }
+    /**
+     * Looks up a tool by the function name returned by the model.
+     * @param name the Java method name
+     * @return the registered tool, or null if unknown
+     */
     public AditusTool get(String name) { return tools.get(name); }
 }

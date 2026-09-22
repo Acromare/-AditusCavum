@@ -14,6 +14,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Wraps a Java tool method with a model-readable description and JSON-to-Java argument conversion.
+ * <p>The generated schema describes basic parameter structure; this is not a complete JSON Schema
+ * validator and does not automatically run Bean Validation. Business methods must enforce rules
+ * such as phone format, authorization, and duplicate registration checks.
+ */
 public final class AditusTool {
     private final Object target;
     private final Method method;
@@ -21,6 +27,12 @@ public final class AditusTool {
     private final String description;
     private final Map<String, Object> parametersSchema;
 
+    /**
+     * Builds a description from the tool annotation and reflected parameters.
+     * @param target the business bean receiving invocations
+     * @param method the tool method annotated with {@link Need}
+     * @param mapper the JSON mapper; current basic schema generation does not inspect its settings
+     */
     public AditusTool(Object target, Method method, ObjectMapper mapper) {
         this.target = target;
         this.method = method;
@@ -30,10 +42,23 @@ public final class AditusTool {
         this.parametersSchema = buildSchema(mapper);
     }
 
+    /** @return the Java method name used as the tool name */
     public String name() { return name; }
+    /** @return the natural-language description supplied to the model */
     public String description() { return description; }
+    /** @return the basic parameter schema, which callers should not modify */
     public Map<String, Object> parametersSchema() { return parametersSchema; }
 
+    /**
+     * Converts arguments and invokes the business method, propagating its original Exception.
+     * <p>Values are normally resolved by Java parameter name, with an {@code arg0}-style fallback.
+     * A single object parameter accepts either a wrapper named after the parameter or the object's
+     * fields directly. Conversion does not replace business validation.
+     * @param arguments the non-null JSON argument node produced by the model
+     * @param mapper the mapper used to convert JSON to Java parameter types
+     * @return the business result, later serialized and sent back to the model
+     * @throws Exception if conversion, reflection, or business execution fails
+     */
     public Object invoke(JsonNode arguments, ObjectMapper mapper) throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] values = new Object[parameters.length];
@@ -62,6 +87,10 @@ public final class AditusTool {
         }
     }
 
+    /**
+     * Exports the tool in OpenAI function tool format.
+     * @return a map containing the type, function name, description, and parameter schema
+     */
     public Map<String, Object> asOpenAiTool() {
         Map<String, Object> function = new LinkedHashMap<>();
         function.put("name", name);
@@ -70,6 +99,7 @@ public final class AditusTool {
         return Map.of("type", "function", "function", function);
     }
 
+    /** Builds the parameter schema; current rules mark non-primitive method parameters as required. */
     private Map<String, Object> buildSchema(ObjectMapper mapper) {
         Map<String, Object> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
@@ -98,6 +128,11 @@ public final class AditusTool {
         return "object";
     }
 
+    /**
+     * Expands one level of declared object fields, skipping static and synthetic fields.
+     * Nested objects are not expanded recursively; arrays and collections only declare their type.
+     * Primitive fields are marked as required.
+     */
     private static Map<String, Object> schemaFor(Class<?> type) {
         if (isSimple(type) || type.isPrimitive() || type.isArray() || Iterable.class.isAssignableFrom(type)) {
             return Map.of("type", jsonType(type));

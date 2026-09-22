@@ -9,7 +9,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
-/** An incremental UTF-8 SSE reader. Closing the body also unblocks a pending read. */
+/**
+ * Incremental UTF-8 SSE reader used by the model adapter.
+ * <p>Joins data lines within each event and ignores other SSE fields. Closing the response body
+ * releases the connection and unblocks a pending read when a subscriber cancels the stream.
+ */
 final class SseStream {
     private final InputStream body;
     private final BufferedReader reader;
@@ -19,6 +23,15 @@ final class SseStream {
         this.reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8));
     }
 
+    /**
+     * Opens an HTTP response, closing its body if the status or content type is unsuitable.
+     * @param client the HTTP client
+     * @param request the streaming model request
+     * @return a reader owning the response body
+     * @throws IOException if the HTTP exchange fails
+     * @throws InterruptedException if the exchange is interrupted
+     * @throws IllegalStateException if the response is unsuccessful or is not an event stream
+     */
     static SseStream open(HttpClient client, HttpRequest request) throws IOException, InterruptedException {
         HttpResponse<InputStream> response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
         SseStream stream = new SseStream(response.body());
@@ -33,6 +46,11 @@ final class SseStream {
         return stream;
     }
 
+    /**
+     * Reads through the blank line terminating the next data event.
+     * @return joined data lines, or null at EOF; an unterminated final event is discarded
+     * @throws IOException if reading the response fails
+     */
     String nextEvent() throws IOException {
         StringBuilder data = new StringBuilder();
         boolean hasData = false;
@@ -51,6 +69,7 @@ final class SseStream {
         return null; // An event without its terminating blank line is incomplete.
     }
 
+    /** Closes the body directly to unblock reads, ignoring errors from an already disconnected response. */
     void close() {
         try { body.close(); } catch (IOException ignored) { /* already disconnected */ }
     }

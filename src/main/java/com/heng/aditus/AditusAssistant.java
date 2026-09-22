@@ -6,11 +6,22 @@ import com.heng.aditus.memory.ChatMemory;
 import com.heng.aditus.model.ChatMessage;
 import reactor.core.publisher.Flux;
 
+/**
+ * Coordinates conversations by combining the system prompt and history before calling {@link ChatModel}.
+ * <p>Registered by auto-configuration for direct injection; service subclasses and client proxies
+ * also delegate here. The model adapter handles tool calls, while this class manages history.
+ */
 public class AditusAssistant implements AditusOperations {
     private final ChatModel model;
     private final ChatMemory memory;
     private final AditusProperties properties;
 
+    /**
+     * Creates an assistant, normally through Spring auto-configuration.
+     * @param model the model invocation implementation
+     * @param memory the message store indexed by conversation ID
+     * @param properties framework settings, including the system prompt
+     */
     public AditusAssistant(ChatModel model, ChatMemory memory, AditusProperties properties) {
         this.model = model;
         this.memory = memory;
@@ -30,7 +41,11 @@ public class AditusAssistant implements AditusOperations {
         return stream(null, message);
     }
 
-    /** Each subscription is a new request; save only successfully completed turns. */
+    /**
+     * {@inheritDoc}
+     * <p>Reads history on each subscription and appends both messages only on normal completion.
+     * Cancellation or failure saves neither message, even if the caller has received partial text.
+     */
     public Flux<String> stream(String conversationId, String message) {
         return Flux.defer(() -> {
             boolean remember = conversationId != null && !conversationId.isBlank();
@@ -52,6 +67,11 @@ public class AditusAssistant implements AditusOperations {
         });
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>The blocking path saves the user message before making the request, so it remains
+     * in history if the request fails. The streaming path instead saves only completed turns.
+     */
     public String chat(String conversationId, String message) {
         if (conversationId == null || conversationId.isBlank()) return chat(message);
         memory.append(conversationId, ChatMessage.user(message));

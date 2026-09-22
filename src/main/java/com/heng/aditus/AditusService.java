@@ -4,8 +4,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import reactor.core.publisher.Flux;
 
 /**
- * Optional base for application-owned Spring services.
- * Register the subclass with {@code @Service}; override only the operations you customize.
+ * Optional base class that implements all conversation operations for application services.
+ *
+ * <p>Annotate a concrete subclass with {@code @Service} and let Spring create it to inject
+ * the assistant. No forwarding methods are required. Constructing a subclass with {@code new}
+ * does not perform injection. Override only the behavior you need to customize.
+ * Single-argument {@code chat/stream} methods delegate to their two-argument counterparts,
+ * so overriding those also affects single-argument calls. For an interface-only client, use
+ * {@link com.heng.aditus.annotation.AditusClient}.
  */
 public abstract class AditusService implements AditusOperations {
     @Autowired

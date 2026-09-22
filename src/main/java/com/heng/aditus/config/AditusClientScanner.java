@@ -22,6 +22,12 @@ import org.springframework.util.StringUtils;
 import java.lang.reflect.Modifier;
 import java.util.List;
 
+/**
+ * Scans {@link AditusClient} interfaces at startup and registers a proxy factory for each one.
+ * <p>Uses Boot auto-configuration packages unless an explicit scan scope is configured.
+ * Bean names are fully qualified interface names. Declaring the object type up front lets Spring
+ * resolve injection points by interface type.
+ */
 final class AditusClientScanner implements BeanDefinitionRegistryPostProcessor, EnvironmentAware, ResourceLoaderAware {
     private Environment environment;
     private ResourceLoader resourceLoader;
@@ -32,6 +38,11 @@ final class AditusClientScanner implements BeanDefinitionRegistryPostProcessor, 
     @Override
     public void setResourceLoader(ResourceLoader resourceLoader) { this.resourceLoader = resourceLoader; }
 
+    /**
+     * Scans, validates interfaces, and registers factories before regular beans are created.
+     * @param registry the Spring bean definition registry
+     * @throws BeansException if Spring bean registration fails
+     */
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
         String configured = environment.getProperty("aditus-cavum.client.base-packages");
@@ -42,7 +53,7 @@ final class AditusClientScanner implements BeanDefinitionRegistryPostProcessor, 
         var scanner = new ClassPathScanningCandidateComponentProvider(false, environment) {
             @Override
             protected boolean isCandidateComponent(AnnotatedBeanDefinition definition) {
-                return definition.getMetadata().isIndependent(); // include interfaces for validation
+                return definition.getMetadata().isIndependent(); // Include interfaces, then validate their contracts.
             }
         };
         scanner.setResourceLoader(resourceLoader);
@@ -67,6 +78,10 @@ final class AditusClientScanner implements BeanDefinitionRegistryPostProcessor, 
         }
     }
 
+    /**
+     * Rejects unsupported types and abstract methods at startup instead of failing on invocation.
+     * Java default methods already have implementations and need not match standard operations.
+     */
     private static void validate(Class<?> type) {
         if (!type.isInterface() || !Modifier.isPublic(type.getModifiers()) || type.isSealed()
                 || !AditusOperations.class.isAssignableFrom(type)) {
@@ -84,6 +99,7 @@ final class AditusClientScanner implements BeanDefinitionRegistryPostProcessor, 
         }
     }
 
+    /** Registration is complete at the definition stage; no BeanFactory changes are needed here. */
     @Override
     public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) { }
 }

@@ -10,12 +10,21 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 
-/** Creates the client without resolving the assistant during Spring bean discovery. */
+/**
+ * Creates a singleton JDK proxy for a client interface.
+ * <p>Standard operations delegate to {@link AditusAssistant}, Java default methods run their own
+ * implementations, and Object methods handle proxy identity. The assistant bean is resolved only
+ * when a conversation method is called, avoiding circular initialization during tool discovery.
+ */
 final class AditusClientFactoryBean implements FactoryBean<Object>, BeanFactoryAware {
     private final Class<?> clientType;
     private final Object client;
     private BeanFactory beanFactory;
 
+    /**
+     * Creates the proxy without resolving the assistant.
+     * @param clientType the client interface already validated by the scanner
+     */
     AditusClientFactoryBean(Class<?> clientType) {
         this.clientType = clientType;
         client = Proxy.newProxyInstance(clientType.getClassLoader(), new Class<?>[]{clientType}, (proxy, method, args) -> {
