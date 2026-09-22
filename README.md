@@ -73,11 +73,11 @@ The current release is available through JitPack:
 <dependency>
     <groupId>com.github.Acromare</groupId>
     <artifactId>-AditusCavum</artifactId>
-    <version>v0.1.7</version>
+    <version>v0.1.8</version>
 </dependency>
 ```
 
-JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.1.7>
+JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.1.8>
 
 ### 2. Configure a model
 
@@ -103,6 +103,26 @@ aditus-cavum.model.api-key=${DEEPSEEK_API_KEY}
 aditus-cavum.model.model=deepseek-chat
 aditus-cavum.chat.max-tool-rounds=5
 ```
+
+### Upgrading from v0.1.7
+
+Version v0.1.8 removes the library's `application.properties`, which could override a consumer's YAML and replace a configured API key with an empty value. Defaults remain in `AditusProperties`; application configuration belongs to the consumer. No Java API changes are required.
+
+If you used the old `ADITUS_MODEL_*`, `ADITUS_MAX_TOOL_ROUNDS`, `ADITUS_MAX_MEMORY_MESSAGES`, or `ADITUS_SYSTEM_PROMPT` environment aliases, map them explicitly in your application's configuration. For example:
+
+```yaml
+aditus-cavum:
+  model:
+    base-url: ${ADITUS_MODEL_BASE_URL:https://api.openai.com/v1}
+    api-key: ${ADITUS_MODEL_API_KEY}
+    model: ${ADITUS_MODEL_NAME:gpt-4o-mini}
+  chat:
+    max-tool-rounds: ${ADITUS_MAX_TOOL_ROUNDS:5}
+    max-memory-messages: ${ADITUS_MAX_MEMORY_MESSAGES:20}
+    system-prompt: ${ADITUS_SYSTEM_PROMPT:}
+```
+
+After updating the dependency to `v0.1.8`, rebuild and restart your application. When building the framework from source, use `./mvnw clean verify` to remove stale resources from previous builds.
 
 ### 3. Declare a tool
 
@@ -251,7 +271,7 @@ Windows:
 ./mvnw.cmd test
 ```
 
-The current tests cover tool schema generation, Java Bean argument invocation, in-memory conversation memory, and Spring context startup.
+The current tests cover tool schema generation, Java Bean argument invocation, in-memory conversation memory, Spring context startup, and consumer YAML configuration binding.
 
 ## Roadmap
 

@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: consumer-application
+
+aditus-cavum:
+  model:
+    base-url: https://consumer.example/v1
+    api-key: consumer-test-key
+    model: consumer-model
+  chat:
+    max-tool-rounds: 2
+    max-memory-messages: 6
+    system-prompt: Consumer-owned system prompt.
