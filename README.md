@@ -48,13 +48,13 @@ The name comes from the Latin-inspired phrase “Aditus Cavum”: an entrance an
 - In-memory conversation memory keyed by conversation ID
 - Configurable system prompt
 - Spring Boot auto-configuration
-- Reactive `Flux<String>` assistant entry point
+- Incremental SSE text streaming through `Flux<String>`, including tool-call continuation
 
 ## Current Scope
 
 AditusCavum currently focuses on the model and tool-calling foundation. It does not generate SQL or implement database CRUD automatically. Database, HTTP, order, payment, and other business logic remain ordinary Java methods owned by the application.
 
-`stream()` currently exposes a reactive API, but it completes the tool loop before returning the final text. True incremental SSE token streaming is planned for a later release.
+`stream()` emits text deltas as the provider sends them. Tool-call argument fragments are assembled internally before execution; tool results are sent back to the model and text streaming continues. A delta is not necessarily one character or one token.
 
 ## Quick Start
 
@@ -73,11 +73,11 @@ The current release is available through JitPack:
 <dependency>
     <groupId>com.github.Acromare</groupId>
     <artifactId>-AditusCavum</artifactId>
-    <version>v0.1.8</version>
+    <version>v0.1.9</version>
 </dependency>
 ```
 
-JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.1.8>
+JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.1.9>
 
 ### 2. Configure a model
 
@@ -173,6 +173,33 @@ public class ChatService {
     }
 }
 ```
+
+## Streaming
+
+```java
+Flux<String> deltas = assistant.stream("Explain virtualization.");
+Flux<String> conversation = assistant.stream("user-1001", "What did I ask earlier?");
+```
+
+Both methods apply the configured system prompt. Calling a method does not start a request: each subscription starts a new request. Do not subscribe in your controller; return the publisher to Spring. Do not wrap `chat()` in `Flux.just(...)`, as that waits for the entire answer.
+
+A minimal Spring MVC endpoint is:
+
+```java
+@GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+public Flux<String> stream(@RequestParam String conversationId,
+                           @RequestParam String message) {
+    return assistant.stream(conversationId, message);
+}
+```
+
+The controller owns the HTTP API; the framework provides the Java API. For POST requests or explicit `token`, `done`, and `error` events, see the [streaming integration guide](docs/streaming.md). Read SSE incrementally in the browser rather than calling `response.json()`. Reverse proxies must allow streaming without buffering.
+
+The default model uses `stream: true` and reads UTF-8 SSE events on Reactor's bounded-elastic scheduler. Cancellation closes the upstream response body. An idle event stream times out after two minutes. An incomplete response, malformed event, HTTP error, or provider error terminates the publisher with an error; emitted text may therefore be partial. Model calls and tools are never automatically retried.
+
+For a conversation stream, memory is updated only after successful completion. Errors and cancellation do not save the current user/assistant pair. Tool side effects that already occurred cannot be rolled back by cancelling the stream. Serialize requests for the same conversation ID; concurrent turns and clearing memory during an active stream are not coordinated.
+
+Custom `ChatModel` implementations can override `stream(List<ChatMessage>)` to provide incremental output. Its default implementation lazily runs `chat(messages)` on bounded elastic and emits one complete answer. Existing `stream(String)` calls remain available; the assistant uses the message-list overload so the system prompt and history are preserved.
 
 ## Conversation Memory
 
@@ -271,7 +298,7 @@ Windows:
 ./mvnw.cmd test
 ```
 
-The current tests cover tool schema generation, Java Bean argument invocation, in-memory conversation memory, Spring context startup, and consumer YAML configuration binding.
+The current tests cover tool schema generation, Java Bean argument invocation, in-memory conversation memory, Spring context startup, consumer YAML binding, incremental SSE delivery, fragmented tool calls, cancellation, errors, tool limits, and streaming conversation isolation. Streaming tests use a local HTTP server and require no provider API key.
 
 ## Roadmap
 
@@ -279,7 +306,7 @@ The current tests cover tool schema generation, Java Bean argument invocation, i
 - [x] `@Need` tool registration and execution
 - [x] Spring Boot auto-configuration
 - [x] Basic conversation memory
-- [ ] True SSE incremental streaming
+- [x] True SSE incremental streaming
 - [ ] Provider-specific DeepSeek and Qwen options
 - [ ] Native Claude adapter
 - [ ] More complete argument validation and tool error recovery

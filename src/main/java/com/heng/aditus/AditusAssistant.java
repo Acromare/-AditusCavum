@@ -27,7 +27,29 @@ public class AditusAssistant {
     }
 
     public Flux<String> stream(String message) {
-        return model.stream(message);
+        return stream(null, message);
+    }
+
+    /** Each subscription is a new request; save only successfully completed turns. */
+    public Flux<String> stream(String conversationId, String message) {
+        return Flux.defer(() -> {
+            boolean remember = conversationId != null && !conversationId.isBlank();
+            java.util.List<ChatMessage> messages = new java.util.ArrayList<>();
+            if (!properties.getChat().getSystemPrompt().isBlank()) {
+                messages.add(ChatMessage.system(properties.getChat().getSystemPrompt()));
+            }
+            if (remember) messages.addAll(memory.messages(conversationId));
+            messages.add(ChatMessage.user(message));
+            StringBuilder answer = new StringBuilder();
+            return model.stream(messages)
+                    .doOnNext(answer::append)
+                    .doOnComplete(() -> {
+                        if (remember) {
+                            memory.append(conversationId, ChatMessage.user(message));
+                            memory.append(conversationId, ChatMessage.assistant(answer.toString()));
+                        }
+                    });
+        });
     }
 
     public String chat(String conversationId, String message) {
