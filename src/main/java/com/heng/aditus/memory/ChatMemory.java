@@ -23,6 +23,12 @@ public interface ChatMemory {
      * @param message the message to save
      */
     void append(String conversationId, ChatMessage message);
+
+    /** Appends one completed turn; persistent implementations may override atomically. */
+    default void appendTurn(String conversationId, ChatMessage user, ChatMessage assistant) {
+        append(conversationId, user);
+        append(conversationId, assistant);
+    }
     /**
      * Clears history, doing nothing if the conversation does not exist.
      * @param conversationId the non-null conversation ID

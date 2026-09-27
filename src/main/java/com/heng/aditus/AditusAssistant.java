@@ -4,7 +4,12 @@ import com.heng.aditus.model.ChatModel;
 import com.heng.aditus.config.AditusProperties;
 import com.heng.aditus.memory.ChatMemory;
 import com.heng.aditus.model.ChatMessage;
+import com.heng.aditus.rag.KnowledgeDocument;
+import com.heng.aditus.rag.KnowledgeRetriever;
 import reactor.core.publisher.Flux;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 
 /**
  * Coordinates conversations by combining the system prompt and history before calling {@link ChatModel}.
@@ -15,6 +20,8 @@ public class AditusAssistant implements AditusOperations {
     private final ChatModel model;
     private final ChatMemory memory;
     private final AditusProperties properties;
+    private final KnowledgeRetriever knowledgeRetriever;
+    private final ConcurrentHashMap<String, Semaphore> conversationLocks = new ConcurrentHashMap<>();
 
     /**
      * Creates an assistant, normally through Spring auto-configuration.
@@ -22,10 +29,17 @@ public class AditusAssistant implements AditusOperations {
      * @param memory the message store indexed by conversation ID
      * @param properties framework settings, including the system prompt
      */
-    public AditusAssistant(ChatModel model, ChatMemory memory, AditusProperties properties) {
+    public AditusAssistant(ChatModel model, ChatMemory memory, AditusProperties properties,
+                            KnowledgeRetriever knowledgeRetriever) {
         this.model = model;
         this.memory = memory;
         this.properties = properties;
+        this.knowledgeRetriever = knowledgeRetriever;
+    }
+
+    /** Backward-compatible constructor without knowledge retrieval. */
+    public AditusAssistant(ChatModel model, ChatMemory memory, AditusProperties properties) {
+        this(model, memory, properties, (query, topK) -> java.util.List.of());
     }
 
     public String chat(String message) {
@@ -49,6 +63,16 @@ public class AditusAssistant implements AditusOperations {
     public Flux<String> stream(String conversationId, String message) {
         return Flux.defer(() -> {
             boolean remember = conversationId != null && !conversationId.isBlank();
+            Semaphore lock = remember ? conversationLocks.computeIfAbsent(conversationId,
+                    ignored -> new Semaphore(1)) : null;
+            if (lock != null) {
+                try {
+                    lock.acquire();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    return Flux.error(exception);
+                }
+            }
             java.util.List<ChatMessage> messages = new java.util.ArrayList<>();
             if (!properties.getChat().getSystemPrompt().isBlank()) {
                 messages.add(ChatMessage.system(properties.getChat().getSystemPrompt()));
@@ -56,14 +80,26 @@ public class AditusAssistant implements AditusOperations {
             if (remember) messages.addAll(memory.messages(conversationId));
             messages.add(ChatMessage.user(message));
             StringBuilder answer = new StringBuilder();
-            return model.stream(messages)
-                    .doOnNext(answer::append)
-                    .doOnComplete(() -> {
-                        if (remember) {
-                            memory.append(conversationId, ChatMessage.user(message));
-                            memory.append(conversationId, ChatMessage.assistant(answer.toString()));
-                        }
-                    });
+            try {
+                return model.stream(messages)
+                        .doOnNext(answer::append)
+                        .doOnComplete(() -> {
+                            if (remember) memory.appendTurn(conversationId, ChatMessage.user(message),
+                                    ChatMessage.assistant(answer.toString()));
+                        })
+                        .doFinally(signal -> {
+                            if (lock != null) {
+                                lock.release();
+                                conversationLocks.remove(conversationId, lock);
+                            }
+                        });
+            } catch (RuntimeException exception) {
+                if (lock != null) {
+                    lock.release();
+                    conversationLocks.remove(conversationId, lock);
+                }
+                throw exception;
+            }
         });
     }
 
@@ -74,17 +110,43 @@ public class AditusAssistant implements AditusOperations {
      */
     public String chat(String conversationId, String message) {
         if (conversationId == null || conversationId.isBlank()) return chat(message);
-        memory.append(conversationId, ChatMessage.user(message));
-        java.util.List<ChatMessage> messages = new java.util.ArrayList<>(memory.messages(conversationId));
-        if (!properties.getChat().getSystemPrompt().isBlank()) {
-            messages.add(0, ChatMessage.system(properties.getChat().getSystemPrompt()));
+        Semaphore lock = conversationLocks.computeIfAbsent(conversationId, ignored -> new Semaphore(1));
+        lock.acquireUninterruptibly();
+        try {
+            java.util.List<ChatMessage> messages = new java.util.ArrayList<>(memory.messages(conversationId));
+            if (!properties.getChat().getSystemPrompt().isBlank()) {
+                messages.add(0, ChatMessage.system(properties.getChat().getSystemPrompt()));
+            }
+            addRetrievedContext(messages, message);
+            messages.add(ChatMessage.user(message));
+            String answer = model.chat(messages);
+            memory.appendTurn(conversationId, ChatMessage.user(message), ChatMessage.assistant(answer));
+            return answer;
+        } finally {
+            lock.release();
+            conversationLocks.remove(conversationId, lock);
         }
-        String answer = model.chat(messages);
-        memory.append(conversationId, ChatMessage.assistant(answer));
-        return answer;
     }
 
     public void clearConversation(String conversationId) {
-        memory.clear(conversationId);
+        if (conversationId == null || conversationId.isBlank()) return;
+        Semaphore lock = conversationLocks.computeIfAbsent(conversationId, ignored -> new Semaphore(1));
+        lock.acquireUninterruptibly();
+        try {
+            memory.clear(conversationId);
+        } finally {
+            lock.release();
+            conversationLocks.remove(conversationId, lock);
+        }
+    }
+
+    private void addRetrievedContext(java.util.List<ChatMessage> messages, String query) {
+        java.util.List<KnowledgeDocument> documents = knowledgeRetriever.retrieve(query,
+                properties.getChat().getKnowledgeTopK());
+        if (documents.isEmpty()) return;
+        String context = documents.stream()
+                .map(document -> "[" + document.id() + "]\n" + document.text())
+                .collect(java.util.stream.Collectors.joining("\n\n"));
+        messages.add(ChatMessage.system("Relevant knowledge retrieved for this request:\n" + context));
     }
 }

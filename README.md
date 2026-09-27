@@ -2,7 +2,53 @@
 
 > Connect natural language to real Java capabilities with only a few lines of code.
 
-AditusCavum is a lightweight Java chat, streaming, and Tool Calling framework for Spring Boot. Declare a client interface, inject it, and call the predefined methods. The framework handles model requests, tool schemas, argument conversion, tool loops, and conversation memory.
+## v0.2.2 is here: less wiring, more enjoying
+
+This is the release where AditusCavum starts feeling like a companion instead of
+another integration task. Add one dependency, expose one interface, point one
+annotation at your knowledge folder, and enjoy a complete chat surface: memory,
+streaming, RAG context, tools, a browser UI, and a live console are ready when
+your application starts.
+
+This release is intentionally practical. Every item below is implemented in the
+framework, documented here, and kept compatible with the existing v0.2.1 API.
+
+### What changed in v0.2.2
+
+1. **Knowledge-aware chat by declaration.** `@AditusSylva` discovers classpath
+   files, splits them into bounded chunks, retrieves relevant pieces for each
+   question, and adds them to the model context. No RAG pipeline, loader, or
+   prompt assembly is required in application code.
+2. **A replaceable retrieval boundary.** The built-in retriever is a small,
+   dependency-free lexical index for local text. Replace the `KnowledgeRetriever`
+   bean with an embedding or vector-database implementation without changing
+   `AditusAssistant`, controllers, or callers.
+3. **A default HTTP surface.** Web applications automatically receive chat,
+   SSE streaming, and conversation cleanup endpoints. There is no repeated
+   `/chat`, `/stream`, or SSE controller boilerplate to write.
+4. **A browser experience included in the dependency.** `/aditus/` is a ready
+   chat page. `/aditus-console/` is a Sentinel-style runtime view for model,
+   tools, knowledge chunks, and retrieval settings. Credentials are never
+   returned by the status endpoint.
+5. **Tools need less ceremony.** `@CavumOperis("description")` is the concise
+   tool declaration. The established `@MarkTheRuins` and `@Need` annotations
+   continue to work unchanged.
+6. **Memory is safer under real traffic.** Conversations remain isolated by
+   ID; requests for the same ID are serialized; a user/assistant turn is stored
+   atomically only after success; failed or cancelled model calls do not add
+   half a turn to history.
+7. **Configuration can be zero-YAML.** `ADITUS_API_KEY`, `ADITUS_BASE_URL`,
+   `ADITUS_MODEL`, and related aliases configure the provider from the
+   environment. Explicit Spring properties still win.
+8. **Compatibility is explicit.** The framework is compiled for JDK 17 and
+   avoids newer Java APIs, builds with Maven 3.8+ and Maven 4.x, and keeps its
+   Spring API usage suitable for Boot 3.2+ and Boot 4.x consumer applications.
+   MyBatis-Plus 3.x and 4.x remain application-owned and are not coupled to this
+   framework.
+
+Enjoy the short path from a Spring Boot application to a useful AI feature.
+
+AditusCavum is a lightweight Java chat, streaming, RAG, and Tool Calling framework for Spring Boot. Declare a client interface, inject it, and call the predefined methods. The framework handles model requests, tool schemas, argument conversion, tool loops, conversation memory, knowledge retrieval, and a ready-to-use web console.
 
 Declare your AI client:
 
@@ -37,7 +83,48 @@ public class ExamSupport {
 
 The client implementation is created automatically: no implementation class or `super` call is required. Place the interface under your Spring Boot application package and configure your model using the Quick Start below. `chat(...)` returns a complete answer; `stream(...)` emits text incrementally. The surrounding service above is optional: a controller can inject `ExamAI` directly.
 
-**New in v0.2.1:** `@AditusClient`, the shared `AditusOperations` contract, automatic interface scanning, and JDK proxy registration. Existing `extends AditusService` and direct `AditusAssistant` injection remain supported. See the [release notes](docs/releases/v0.2.1.md) for added and changed behavior, and the [client guide](docs/clients.md) for full examples and limitations.
+**v0.2.2 highlights:** automatic knowledge/RAG loading with `@AditusSylva`, built-in chat and SSE endpoints, bundled browser pages and a Sentinel-style runtime console, zero-YAML environment setup, `@CavumOperis` tools, isolated and serialized conversation memory, and the injectable `@AditusClient` API from v0.2.1. Existing `extends AditusService`, `@Need`, `@MarkTheRuins`, and direct `AditusAssistant` injection remain supported. See the [v0.2.2 release notes](docs/releases/v0.2.2.md) for the complete change list.
+
+### 3. Declare knowledge with one annotation
+
+Put knowledge files under `src/main/resources/knowledge/` and annotate the
+application class. The framework loads, chunks, indexes, and retrieves relevant
+pieces automatically for every chat request:
+
+```java
+@SpringBootApplication
+@AditusSylva("classpath:knowledge")
+public class Application {
+}
+```
+
+The default retriever is dependency-free and works well for small text
+knowledge bases. Advanced applications can replace the `KnowledgeRetriever`
+bean with an embedding or vector-database implementation. Tune the number of
+retrieved chunks with `aditus-cavum.chat.knowledge-top-k`.
+
+### 4. Open the built-in surfaces
+
+With the default web settings, start the application and open:
+
+```text
+http://localhost:8080/aditus/
+http://localhost:8080/aditus-console/
+```
+
+The corresponding API is:
+
+```text
+POST   /aditus/api/chat
+GET    /aditus/api/stream?conversationId=user-1&message=Hello
+DELETE /aditus/api/conversation/{conversationId}
+```
+
+Change the prefix with `aditus-cavum.web.path`. Set
+`aditus-cavum.web.enabled=false` to disable the default API, or
+`aditus-cavum.web.console-enabled=false` to disable only the console.
+
+### 5. Declare a tool
 
 Optionally define a model-callable tool:
 
@@ -86,6 +173,13 @@ The name comes from the Latin-inspired phrase “Aditus Cavum”: an entrance an
 - Optional `AditusService` base class with inherited chat, streaming, and conversation cleanup
 - Injectable `@AditusClient` interfaces backed by automatic proxies
 - Incremental SSE text streaming through `Flux<String>`, including tool-call continuation
+- `@AditusSylva` automatic classpath knowledge loading, chunking, and retrieval-augmented context
+- Replaceable `KnowledgeRetriever` extension point for embeddings and vector databases
+- Built-in `/aditus/api/chat`, `/aditus/api/stream`, and conversation cleanup endpoints
+- Bundled `/aditus/` chat page and `/aditus-console/` runtime console
+- `@CavumOperis` one-annotation tool declaration, with legacy tool annotations preserved
+- Conversation-level serialization so chat, stream, and clear operations cannot corrupt one another
+- Environment-only model configuration with no mandatory YAML block
 
 ## Current Scope
 
@@ -110,13 +204,26 @@ The current release is available through JitPack:
 <dependency>
     <groupId>com.github.Acromare</groupId>
     <artifactId>-AditusCavum</artifactId>
-    <version>v0.2.1</version>
+    <version>v0.2.2</version>
 </dependency>
 ```
 
-JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.2.1>
+JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.2.2>
 
 ### 2. Configure a model
+
+The shortest setup uses environment variables only. With the defaults, you can
+start the application without an AditusCavum YAML block:
+
+```text
+ADITUS_API_KEY=your-provider-key
+ADITUS_BASE_URL=https://api.deepseek.com/v1
+ADITUS_MODEL=deepseek-chat
+```
+
+The framework also accepts the legacy names `ADITUS_MODEL_API_KEY`,
+`ADITUS_MODEL_BASE_URL`, and `ADITUS_MODEL_NAME`. Explicit
+`aditus-cavum.model.*` and `aditus-cavum.chat.*` properties take precedence.
 
 Keep API keys in environment variables:
 
@@ -191,7 +298,7 @@ public class OrderTools {
 
 `@MarkTheRuins` controls which types are scanned. Only marked types are registered as tools. The `@Need` value becomes the description sent to the model, so describe the action, object, and important conditions clearly.
 
-### 4. Call the assistant
+### 6. Call the assistant
 
 Declare an interface when you only need the predefined operations:
 
@@ -365,6 +472,15 @@ Natural language is useful for describing business intent. Java methods are usef
 AditusCavum takes inspiration from mature frameworks such as LangChain4j. The goal is not to invent more abstractions, but to make common model and Tool Calling scenarios easier to enter from an ordinary Spring Boot project.
 
 ## Build and Test
+
+Compatibility baseline:
+
+- JDK 17 or newer. The library is compiled for Java 17 and avoids newer Java APIs.
+- Maven 3.8+ and Maven 4.x. The Maven Wrapper currently pins Maven 3.9 for reproducible builds; a system Maven 4 can build the same POM.
+- Spring Boot 3.2+ and Spring Boot 4.x when the consuming application supplies its own Boot dependency management. AditusCavum uses Spring APIs shared by these generations and does not require Boot 4-only classes.
+- MyBatis-Plus 3.x and 4.x are supported as application-side dependencies. AditusCavum does not depend on MyBatis-Plus, so its version is selected by the host application and remains isolated from the chat/RAG modules.
+
+The supported matrix is intentionally based on APIs rather than a fixed application stack: keep the framework dependency unversioned by importing it after your application's Spring Boot BOM/parent, and let the application choose its MyBatis-Plus line.
 
 Java 17 or newer is required:
 

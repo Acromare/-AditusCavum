@@ -2,6 +2,7 @@ package com.heng.aditus.tool;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.heng.aditus.annotation.CavumOperis;
 import com.heng.aditus.annotation.Need;
 
 import java.lang.reflect.InvocationTargetException;
@@ -38,7 +39,7 @@ public final class AditusTool {
         this.method = method;
         this.method.setAccessible(true);
         this.name = method.getName();
-        this.description = method.getAnnotation(Need.class).value();
+        this.description = descriptionOf(method);
         this.parametersSchema = buildSchema(mapper);
     }
 
@@ -97,6 +98,14 @@ public final class AditusTool {
         function.put("description", description);
         function.put("parameters", parametersSchema);
         return Map.of("type", "function", "function", function);
+    }
+
+    private static String descriptionOf(Method method) {
+        CavumOperis operation = method.getAnnotation(CavumOperis.class);
+        if (operation != null) return operation.value();
+        Need legacy = method.getAnnotation(Need.class);
+        if (legacy != null) return legacy.value();
+        throw new IllegalArgumentException("Tool method must use @CavumOperis or @Need: " + method);
     }
 
     /** Builds the parameter schema; current rules mark non-primitive method parameters as required. */
