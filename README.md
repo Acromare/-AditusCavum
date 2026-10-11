@@ -2,6 +2,14 @@
 
 > Connect natural language to real Java capabilities with only a few lines of code.
 
+## v0.2.3 — knowledge joins every conversation
+
+Enjoy knowledge-aware replies in both chat and streaming! This patch adds retrieval to stateless chat and all streaming overloads. Retrieved context stays request-local, outside conversation history.
+
+Use `@AditusSylva("classpath:rag/rag.txt")` for `src/main/resources/rag/rag.txt`. External files use `file:C:/path/rag.txt`, never `classpath:C:/...`. Retrieval remains lexical; configure Top-K using `aditus-cavum.chat.knowledge-top-k`.
+
+See [v0.2.3 release notes](docs/releases/v0.2.3.md).
+
 ## v0.2.2 is here: less wiring, more enjoying
 
 This is the release where AditusCavum starts feeling like a companion instead of
@@ -204,11 +212,11 @@ The current release is available through JitPack:
 <dependency>
     <groupId>com.github.Acromare</groupId>
     <artifactId>-AditusCavum</artifactId>
-    <version>v0.2.2</version>
+    <version>v0.2.3</version>
 </dependency>
 ```
 
-JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.2.2>
+JitPack build page: <https://jitpack.io/#Acromare/-AditusCavum/v0.2.3>
 
 ### 2. Configure a model
 

@@ -47,6 +47,7 @@ public class AditusAssistant implements AditusOperations {
         if (!properties.getChat().getSystemPrompt().isBlank()) {
             messages.add(ChatMessage.system(properties.getChat().getSystemPrompt()));
         }
+        addRetrievedContext(messages, message);
         messages.add(ChatMessage.user(message));
         return model.chat(messages);
     }
@@ -77,10 +78,11 @@ public class AditusAssistant implements AditusOperations {
             if (!properties.getChat().getSystemPrompt().isBlank()) {
                 messages.add(ChatMessage.system(properties.getChat().getSystemPrompt()));
             }
-            if (remember) messages.addAll(memory.messages(conversationId));
-            messages.add(ChatMessage.user(message));
             StringBuilder answer = new StringBuilder();
             try {
+                if (remember) messages.addAll(memory.messages(conversationId));
+                addRetrievedContext(messages, message);
+                messages.add(ChatMessage.user(message));
                 return model.stream(messages)
                         .doOnNext(answer::append)
                         .doOnComplete(() -> {
@@ -105,8 +107,7 @@ public class AditusAssistant implements AditusOperations {
 
     /**
      * {@inheritDoc}
-     * <p>The blocking path saves the user message before making the request, so it remains
-     * in history if the request fails. The streaming path instead saves only completed turns.
+     * <p>Both blocking and streaming paths save only completed turns.
      */
     public String chat(String conversationId, String message) {
         if (conversationId == null || conversationId.isBlank()) return chat(message);
