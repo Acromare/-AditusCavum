@@ -1,8 +1,21 @@
-# AditusCavum
+<p align="center">
+  <img src="docs/assets/enjoy-banner.svg" alt="AditusCavum: a smiling companion. Less wiring. More creating. Enjoy the conversation!" width="100%" />
+</p>
 
-> Connect natural language to real Java capabilities with only a few lines of code.
+# AditusCavum ✨
 
-## v0.2.3 — knowledge joins every conversation
+> A little Java. A little AI. A whole lot of possibility.
+
+Hey, Java friends! 👋 Bring your questions, your knowledge, and your favorite
+business methods. Let's turn them into conversations worth having.
+
+**Chat it. Stream it. Give it knowledge. Let it call your tools. Enjoy! 💜**
+
+[🚀 Quick Start](#quick-start) · [🎉 What's new in v0.2.3](docs/releases/v0.2.3.md) · [📦 Get it on JitPack](https://jitpack.io/#Acromare/-AditusCavum/v0.2.3)
+
+---
+
+## 🎉 v0.2.3 — bring your knowledge to the conversation!
 
 Enjoy knowledge-aware replies in both chat and streaming! This patch adds retrieval to stateless chat and all streaming overloads. Retrieved context stays request-local, outside conversation history.
 
@@ -10,7 +23,7 @@ Use `@AditusSylva("classpath:rag/rag.txt")` for `src/main/resources/rag/rag.txt`
 
 See [v0.2.3 release notes](docs/releases/v0.2.3.md).
 
-## v0.2.2 is here: less wiring, more enjoying
+## 🌱 The v0.2.2 foundation: less wiring, more enjoying
 
 This is the release where AditusCavum starts feeling like a companion instead of
 another integration task. Add one dependency, expose one interface, point one
@@ -21,7 +34,7 @@ your application starts.
 This release is intentionally practical. Every item below is implemented in the
 framework, documented here, and kept compatible with the existing v0.2.1 API.
 
-### What changed in v0.2.2
+### 🧰 Everything that came with v0.2.2
 
 1. **Knowledge-aware chat by declaration.** `@AditusSylva` discovers classpath
    files, splits them into bounded chunks, retrieves relevant pieces for each
@@ -34,8 +47,8 @@ framework, documented here, and kept compatible with the existing v0.2.1 API.
 3. **A default HTTP surface.** Web applications automatically receive chat,
    SSE streaming, and conversation cleanup endpoints. There is no repeated
    `/chat`, `/stream`, or SSE controller boilerplate to write.
-4. **A browser experience included in the dependency.** `/aditus/` is a ready
-   chat page. `/aditus-console/` is a Sentinel-style runtime view for model,
+4. **A browser experience included in the dependency.** `/aditus/index.html` is a ready
+   chat page. `/aditus-console/index.html` is a lightweight runtime view for model,
    tools, knowledge chunks, and retrieval settings. Credentials are never
    returned by the status endpoint.
 5. **Tools need less ceremony.** `@CavumOperis("description")` is the concise
@@ -54,7 +67,7 @@ framework, documented here, and kept compatible with the existing v0.2.1 API.
    MyBatis-Plus 3.x and 4.x remain application-owned and are not coupled to this
    framework.
 
-Enjoy the short path from a Spring Boot application to a useful AI feature.
+☕ Grab a coffee, write a few lines, and enjoy the conversation.
 
 AditusCavum is a lightweight Java chat, streaming, RAG, and Tool Calling framework for Spring Boot. Declare a client interface, inject it, and call the predefined methods. The framework handles model requests, tool schemas, argument conversion, tool loops, conversation memory, knowledge retrieval, and a ready-to-use web console.
 
@@ -525,3 +538,8 @@ This is a small open-source project that is still growing quickly. Issues, sugge
 ## License
 
 The final project license has not been selected yet. A license file will be added before the project is considered ready for broad redistribution.
+
+
+---
+
+<p align="center">Made for curious Java developers. Build something useful. Have a little fun. <strong>Enjoy! 💜</strong></p>

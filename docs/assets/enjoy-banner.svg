@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+<title id="title">AditusCavum — Less wiring. More creating. Enjoy!</title><desc id="desc">A smiling purple companion surrounded by chat, knowledge and Java tools on a warm cream background.</desc>
+<rect width="1200" height="360" rx="28" fill="#fff8ed"/>
+<circle cx="1040" cy="60" r="120" fill="#fde6a3"/><circle cx="60" cy="340" r="110" fill="#e5dcff"/>
+<g font-family="Segoe UI,Arial,sans-serif" fill="#29243d"><text x="70" y="82" font-size="18" font-weight="700" letter-spacing="4" fill="#6d28d9">HELLO, JAVA FRIENDS!</text><text x="65" y="154" font-size="60" font-weight="800">AditusCavum.</text><text x="70" y="203" font-size="26">Less wiring. More creating.</text><text x="70" y="264" font-size="35" font-weight="700" fill="#6d28d9">Enjoy the conversation!</text><text x="70" y="310" font-size="17" fill="#625a72">CHAT  /  STREAMING  /  KNOWLEDGE  /  TOOLS</text></g>
+<g transform="translate(790 92)"><rect x="0" y="0" width="230" height="175" rx="58" fill="#7c3aed"/><path d="M40 157 L30 198 L88 169" fill="#7c3aed"/><ellipse cx="75" cy="69" rx="12" ry="17" fill="white"/><ellipse cx="155" cy="69" rx="12" ry="17" fill="white"/><path d="M76 111 Q115 150 155 111" fill="none" stroke="white" stroke-width="9" stroke-linecap="round"/><circle cx="45" cy="100" r="13" fill="#c4b5fd"/><circle cx="185" cy="100" r="13" fill="#c4b5fd"/></g>
+<g fill="#f59e0b"><path d="M745 70 l6 17 18 6 -18 6 -6 17 -6 -17 -18 -6 18 -6z"/><path d="M1070 220 l7 20 20 7 -20 7 -7 20 -7 -20 -20 -7 20 -7z"/></g>
+<g font-family="Segoe UI,Arial,sans-serif" font-size="23" font-weight="700" fill="#6d28d9"><text x="1035" y="160" transform="rotate(12 1035 160)">{ java }</text><text x="830" y="325">let's build something!</text></g>
+</svg>
